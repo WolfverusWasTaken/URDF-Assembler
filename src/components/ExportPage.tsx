@@ -64,7 +64,7 @@ export function ExportPage() {
         </div>
         <div className={["physics-badge", allValid ? "ok" : "bad"].join(" ")}>
           {allValid ? <CheckCircle2 size={14} /> : <TriangleAlert size={14} />}
-          <span>{allValid ? "Physics Engine Verification Passed" : "Needs review before export"}</span>
+          <span>{allValid ? "Physics Engine Verification Passed" : "Check values before export"}</span>
         </div>
         <div className="export-validation-list">
           {validationResults.map((entry) => (

@@ -62,14 +62,16 @@ const meshBounds = (meshes: StepMeshData[]) => {
 };
 
 export const estimateMeshVolumeAndCom = (meshes: StepMeshData[], fallbackDimensions: Vec3Tuple) => {
+  const bounds = meshBounds(meshes);
+  const reference = bounds.center;
   let signedVolume = 0;
   const weightedCentroid = new Vector3();
 
   for (const mesh of meshes) {
     for (let index = 0; index < mesh.indices.length; index += 3) {
-      const a = vertexAt(mesh, mesh.indices[index]);
-      const b = vertexAt(mesh, mesh.indices[index + 1]);
-      const c = vertexAt(mesh, mesh.indices[index + 2]);
+      const a = vertexAt(mesh, mesh.indices[index]).sub(reference);
+      const b = vertexAt(mesh, mesh.indices[index + 1]).sub(reference);
+      const c = vertexAt(mesh, mesh.indices[index + 2]).sub(reference);
       const tetraVolume = a.dot(b.clone().cross(c)) / 6;
       const tetraCentroid = a.clone().add(b).add(c).multiplyScalar(0.25);
       signedVolume += tetraVolume;
@@ -80,6 +82,10 @@ export const estimateMeshVolumeAndCom = (meshes: StepMeshData[], fallbackDimensi
   const volume = Math.abs(signedVolume);
   if (volume > 1e-9) {
     weightedCentroid.divideScalar(signedVolume);
+    if (signedVolume < 0) {
+      weightedCentroid.multiplyScalar(-1);
+    }
+    weightedCentroid.add(reference);
     return {
       volume,
       centerOfMass: [weightedCentroid.x, weightedCentroid.y, weightedCentroid.z] as Vec3Tuple,

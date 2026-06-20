@@ -53,14 +53,16 @@ const vertexAt = (mesh: StepMeshData, vertexIndex: number) => {
 };
 
 const estimateMeshVolumeAndCom = (meshes: StepMeshData[], fallbackDimensions: Vec3Tuple) => {
+  const bounds = meshBounds(meshes);
+  const reference = bounds.center;
   let signedVolume = 0;
   const weightedCentroid = new Vector3();
 
   for (const mesh of meshes) {
     for (let index = 0; index < mesh.indices.length; index += 3) {
-      const a = vertexAt(mesh, mesh.indices[index]);
-      const b = vertexAt(mesh, mesh.indices[index + 1]);
-      const c = vertexAt(mesh, mesh.indices[index + 2]);
+      const a = vertexAt(mesh, mesh.indices[index]).sub(reference);
+      const b = vertexAt(mesh, mesh.indices[index + 1]).sub(reference);
+      const c = vertexAt(mesh, mesh.indices[index + 2]).sub(reference);
       const tetraVolume = a.dot(b.clone().cross(c)) / 6;
       const tetraCentroid = a.clone().add(b).add(c).multiplyScalar(0.25);
       signedVolume += tetraVolume;
@@ -71,6 +73,10 @@ const estimateMeshVolumeAndCom = (meshes: StepMeshData[], fallbackDimensions: Ve
   const volume = Math.abs(signedVolume);
   if (volume > EPS) {
     weightedCentroid.divideScalar(signedVolume);
+    if (signedVolume < 0) {
+      weightedCentroid.multiplyScalar(-1);
+    }
+    weightedCentroid.add(reference);
     return { volume, centerOfMass: toTuple(weightedCentroid) };
   }
 
@@ -165,11 +171,22 @@ const isInertiaPhysicallyConsistent = (inertia: InertiaTensor, mass: number) => 
   }
   if (mass <= EPS) return false;
   const eigenvalues = eigenvaluesSymmetric3x3(inertia).sort((left, right) => left - right);
-  if (eigenvalues[0] <= EPS) return false;
-  if (eigenvalues[0] > eigenvalues[1] + eigenvalues[2] + 1e-8) return false;
-  if (eigenvalues[1] > eigenvalues[0] + eigenvalues[2] + 1e-8) return false;
-  if (eigenvalues[2] > eigenvalues[0] + eigenvalues[1] + 1e-8) return false;
-  return determinant(inertia) > EPS;
+  const scale = Math.max(
+    Math.abs(inertia.ixx),
+    Math.abs(inertia.iyy),
+    Math.abs(inertia.izz),
+    Math.abs(inertia.ixy),
+    Math.abs(inertia.ixz),
+    Math.abs(inertia.iyz),
+    1e-12,
+  );
+  const tolerance = Math.max(EPS, scale * 1e-8);
+  if (eigenvalues[0] <= -tolerance) return false;
+  if (eigenvalues[0] > eigenvalues[1] + eigenvalues[2] + tolerance) return false;
+  if (eigenvalues[1] > eigenvalues[0] + eigenvalues[2] + tolerance) return false;
+  if (eigenvalues[2] > eigenvalues[0] + eigenvalues[1] + tolerance) return false;
+  const det = determinant(inertia);
+  return det >= -tolerance * scale * scale;
 };
 
 export const createDefaultPhysicalBodies = (meshes: StepMeshData[], existing: PhysicalBodyConfig[] = []) =>
