@@ -34,10 +34,10 @@ This project is useful when you need to:
 
 ## Demo
 
-The repository includes a short demo animation at [`src/assets/demo.gif`](src/assets/demo.gif).
+The repository includes a short demo animation at [`src/assets/Demo.gif`](src/assets/Demo.gif).
 
 <p align="center">
-  <img src="src/assets/demo.gif" alt="URDF Assembler demo" />
+  <img src="src/assets/Demo.gif" alt="URDF Assembler demo" />
 </p>
 
 If your GitHub viewer does not render the image, open the file directly from the repository path above.
