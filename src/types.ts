@@ -1,8 +1,11 @@
-export type PageKey = "upload" | "definition" | "assembly" | "export";
+export type PageKey = "upload" | "definition" | "physical" | "assembly" | "export";
 
 export type JointType = "revolute" | "continuous" | "prismatic" | "fixed";
 
 export type Vec3Tuple = [number, number, number];
+
+export type PhysicalMaterialName = "PLA" | "ABS" | "Aluminum" | "Steel" | "Carbon Fiber" | "Custom";
+export type MassMode = "density" | "manual";
 
 export interface InertiaTensor {
   ixx: number;
@@ -29,6 +32,38 @@ export interface StepMeshData {
   brepFaces?: StepBrepFace[];
 }
 
+export interface PhysicalBodyConfig {
+  id: string;
+  meshId: string;
+  meshIds?: string[];
+  name: string;
+  enabled: boolean;
+  materialName: PhysicalMaterialName;
+  density: number;
+  massMode: MassMode;
+  manualMass?: number | null;
+}
+
+export interface PhysicalBodyResult extends PhysicalBodyConfig {
+  volume: number;
+  mass: number;
+  centerOfMass: Vec3Tuple;
+  inertia: InertiaTensor;
+  dimensions: Vec3Tuple;
+  valid: boolean;
+  warnings: string[];
+}
+
+export interface PhysicalSummary {
+  totalMass: number;
+  totalVolume: number;
+  centerOfMass: Vec3Tuple;
+  inertia: InertiaTensor;
+  bodies: PhysicalBodyResult[];
+  valid: boolean;
+  errors: string[];
+}
+
 export interface JointPoint {
   id: string;
   role: "origin" | "rotation";
@@ -52,6 +87,7 @@ export interface RobotLink {
   density: number;
   centerOfMass: Vec3Tuple;
   inertia: InertiaTensor;
+  physicalBodies?: PhysicalBodyConfig[];
   meshStatus: "pending" | "parsing" | "ready" | "failed";
   meshError?: string;
   meshes?: StepMeshData[];

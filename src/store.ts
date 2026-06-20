@@ -1,6 +1,6 @@
 import { create } from "zustand";
-import type { JointPoint, JointType, PageKey, RobotJoint, RobotLink, RobotOptions } from "./types";
-import { makeLinkFromFile, updateLinkMassProperties } from "./lib/geometry";
+import type { JointPoint, JointType, PageKey, PhysicalMaterialName, RobotJoint, RobotLink, RobotOptions } from "./types";
+import { makeLinkFromFile, syncLinkPhysicalProperties } from "./lib/geometry";
 import { buildRobotJoints, defaultOptions } from "./lib/robot";
 import { loadStepMeshes } from "./lib/stepLoader";
 
@@ -27,6 +27,20 @@ interface AppState {
   setBaseLink: (linkId?: string) => void;
   setLinkOrientation: (linkId: string, orientation: [number, number, number]) => void;
   setLinkMaterial: (linkId: string, materialName: string, density: number) => void;
+  updatePhysicalBody: (
+    linkId: string,
+    bodyId: string,
+    patch: Partial<{
+      enabled: boolean;
+      materialName: PhysicalMaterialName;
+      density: number;
+      massMode: "density" | "manual";
+      manualMass: number | null;
+      name: string;
+    }>,
+  ) => void;
+  removePhysicalBody: (linkId: string, bodyId: string) => void;
+  mergePhysicalBodies: (linkId: string, bodyIds: string[]) => void;
   updateJoint: (id: string, patch: Partial<RobotJoint>) => void;
   setJointType: (id: string, type: JointType) => void;
   setJointValue: (id: string, value: number) => void;
@@ -78,8 +92,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       const links = state.links.map((link) =>
         link.id === id
           ? {
-              ...updateLinkMassProperties({ ...link, meshes: payload.meshes }, payload.dimensions),
-              meshes: payload.meshes,
+              ...syncLinkPhysicalProperties({ ...link, meshes: payload.meshes }, payload.meshes),
               meshStatus: "ready" as const,
               meshError: undefined,
             }
@@ -127,12 +140,85 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => {
       const links = state.links.map((link) =>
         link.id === linkId
-          ? updateLinkMassProperties(
-              { ...link, materialName, density: Number.isFinite(density) && density > 0 ? density : link.density },
-              link.dimensions,
+          ? syncLinkPhysicalProperties(
+              {
+                ...link,
+                materialName,
+                density: Number.isFinite(density) && density > 0 ? density : link.density,
+                physicalBodies: link.physicalBodies?.map((body) => ({
+                  ...body,
+                  materialName: (materialName as PhysicalMaterialName),
+                  density: Number.isFinite(density) && density > 0 ? density : link.density,
+                })),
+              },
+              link.meshes ?? [],
             )
           : link,
       );
+      return { links };
+    }),
+  updatePhysicalBody: (linkId, bodyId, patch) =>
+    set((state) => {
+      const links = state.links.map((link) => {
+        if (link.id !== linkId) return link;
+        const physicalBodies = (link.physicalBodies ?? []).map((body) =>
+          body.id === bodyId
+            ? {
+                ...body,
+                ...patch,
+                materialName: patch.materialName ?? body.materialName,
+                density:
+                  patch.density !== undefined && Number.isFinite(patch.density) && patch.density > 0
+                    ? patch.density
+                    : body.density,
+                manualMass:
+                  patch.manualMass !== undefined
+                    ? patch.manualMass === null
+                      ? null
+                      : Number.isFinite(patch.manualMass) && patch.manualMass > 0
+                        ? patch.manualMass
+                        : body.manualMass ?? null
+                    : body.manualMass ?? null,
+              }
+            : body,
+        );
+        return syncLinkPhysicalProperties({ ...link, physicalBodies }, link.meshes ?? []);
+      });
+      return { links };
+    }),
+  removePhysicalBody: (linkId, bodyId) =>
+    set((state) => {
+      const links = state.links.map((link) => {
+        if (link.id !== linkId) return link;
+        const physicalBodies = (link.physicalBodies ?? []).filter((body) => body.id !== bodyId);
+        return syncLinkPhysicalProperties({ ...link, physicalBodies }, link.meshes ?? []);
+      });
+      return { links };
+    }),
+  mergePhysicalBodies: (linkId, bodyIds) =>
+    set((state) => {
+      const links = state.links.map((link) => {
+        if (link.id !== linkId) return link;
+        const selected = (link.physicalBodies ?? []).filter((body) => bodyIds.includes(body.id));
+        const remaining = (link.physicalBodies ?? []).filter((body) => !bodyIds.includes(body.id));
+        if (selected.length < 2) return link;
+
+        const mergedId = crypto.randomUUID();
+        const mergedMeshIds = selected.flatMap((body) => body.meshIds?.length ? body.meshIds : [body.meshId]);
+        const merged = {
+          id: mergedId,
+          meshId: mergedMeshIds[0] ?? selected[0].meshId,
+          meshIds: Array.from(new Set(mergedMeshIds)),
+          name: `${selected[0].name || "Merged"} + ${selected.length - 1}`,
+          enabled: true,
+          materialName: selected[0].materialName,
+          density: selected[0].density,
+          massMode: selected.some((body) => body.massMode === "manual") ? "manual" : selected[0].massMode,
+          manualMass: selected.reduce((sum, body) => sum + (body.manualMass ?? 0), 0) || null,
+        };
+        const physicalBodies = [...remaining, merged];
+        return syncLinkPhysicalProperties({ ...link, physicalBodies }, link.meshes ?? []);
+      });
       return { links };
     }),
   updateJoint: (id, patch) =>

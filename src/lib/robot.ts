@@ -34,8 +34,8 @@ export const buildRobotJoints = (links: RobotLink[], existing: RobotJoint[] = []
       limitUpper: prior?.limitUpper ?? 1.57,
       velocity: prior?.velocity ?? 1.2,
       effort: prior?.effort ?? 20,
-      damping: prior?.damping ?? 0.04,
-      friction: prior?.friction ?? 0.01,
+      damping: prior?.damping ?? 0.1,
+      friction: prior?.friction ?? Math.max(0.2, ((prior?.effort ?? 20) * 0.02)),
       value: prior?.value ?? 0,
     });
   }

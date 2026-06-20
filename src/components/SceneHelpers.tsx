@@ -115,6 +115,8 @@ export function LinkMesh({
   link,
   wireframe,
   transparent,
+  activeMeshId,
+  activeMeshIds,
   onPick,
   onSnapHover,
   onSnapOut,
@@ -122,6 +124,8 @@ export function LinkMesh({
   link: RobotLink;
   wireframe?: boolean;
   transparent?: boolean;
+  activeMeshId?: string | null;
+  activeMeshIds?: string[] | null;
   onPick?: (point: Vec3Tuple, normal: Vec3Tuple) => void;
   onSnapHover?: (point: Vec3Tuple, normal: Vec3Tuple) => void;
   onSnapOut?: () => void;
@@ -136,6 +140,7 @@ export function LinkMesh({
             fallbackColor={link.color}
             wireframe={wireframe}
             transparent={transparent}
+            active={activeMeshIds?.length ? activeMeshIds.includes(mesh.id) : activeMeshId ? mesh.id === activeMeshId : true}
             onPick={onPick}
             onSnapHover={onSnapHover}
             onSnapOut={onSnapOut}
@@ -198,6 +203,7 @@ function StepMeshPrimitive({
   fallbackColor,
   wireframe,
   transparent,
+  active,
   onPick,
   onSnapHover,
   onSnapOut,
@@ -206,6 +212,7 @@ function StepMeshPrimitive({
   fallbackColor: string;
   wireframe?: boolean;
   transparent?: boolean;
+  active?: boolean;
   onPick?: (point: Vec3Tuple, normal: Vec3Tuple) => void;
   onSnapHover?: (point: Vec3Tuple, normal: Vec3Tuple) => void;
   onSnapOut?: () => void;
@@ -264,6 +271,8 @@ function StepMeshPrimitive({
   };
 
   const color = mesh.color ? `rgb(${mesh.color.map((value) => Math.round(value * 255)).join(",")})` : fallbackColor;
+  const opacity = transparent ? 0.42 : 1;
+  const activeOpacity = active === false ? Math.max(0.08, opacity * 0.12) : opacity;
 
   return (
     <mesh
@@ -286,17 +295,19 @@ function StepMeshPrimitive({
       }}
       onPointerOut={() => onSnapOut?.()}
     >
-      <meshStandardMaterial
-        color={color}
-        roughness={0.42}
-        metalness={0.18}
-        wireframe={wireframe}
-        transparent={transparent}
-        opacity={transparent ? 0.42 : 1}
-      />
-    </mesh>
-  );
-}
+        <meshStandardMaterial
+          color={color}
+          roughness={0.42}
+          metalness={0.18}
+          wireframe={wireframe}
+          transparent={transparent || active === false}
+          opacity={activeOpacity}
+          emissive={active === false ? "#2C2621" : "#00C2CB"}
+          emissiveIntensity={active === false ? 0.02 : 0.16}
+        />
+      </mesh>
+    );
+  }
 
 export function WorkspaceShell({ radius }: { radius: number }) {
   return (

@@ -1,5 +1,6 @@
-import type { JointPoint, RobotLink, Vec3Tuple } from "../types";
-import { estimateMassProperties, normalizeTuple } from "./math";
+import type { JointPoint, RobotLink, StepMeshData, Vec3Tuple } from "../types";
+import { computeLinkPhysicalSummary, resolvePhysicalBodies } from "./physics";
+import { estimateBoxInertia, normalizeTuple } from "./math";
 
 const palette = ["#00C2CB", "#E5D5C5", "#2C2621", "#71D7DC", "#BCA996", "#7C6F64"];
 
@@ -21,7 +22,9 @@ export const makeLinkFromFile = (file: File, index: number): RobotLink => {
     0.52 + (((index + 1) % 3) * 0.1 + scale * 0.13),
   ];
   const density = 2700;
-  const massProperties = estimateMassProperties({ dimensions, density });
+  const fallbackVolume = dimensions[0] * dimensions[1] * dimensions[2];
+  const fallbackMass = Math.max(0.001, fallbackVolume * density);
+  const fallbackInertia = estimateBoxInertia(fallbackMass, dimensions);
 
   return {
     id: crypto.randomUUID(),
@@ -29,21 +32,33 @@ export const makeLinkFromFile = (file: File, index: number): RobotLink => {
     fileName: file.name,
     fileSize: file.size,
     color: palette[index % palette.length],
-    dimensions: massProperties.dimensions,
-    volume: massProperties.volume,
-    mass: massProperties.mass,
+    dimensions,
+    volume: fallbackVolume,
+    mass: fallbackMass,
     materialName: "Aluminum",
     density,
-    centerOfMass: massProperties.centerOfMass,
-    inertia: massProperties.inertia,
+    centerOfMass: [0, 0, 0],
+    inertia: fallbackInertia,
+    physicalBodies: undefined,
     meshStatus: "pending",
     orientation: [0, 0, 0],
   };
 };
 
-export const updateLinkMassProperties = (link: RobotLink, dimensions: Vec3Tuple): RobotLink => {
-  const massProperties = estimateMassProperties({ meshes: link.meshes, dimensions, density: link.density });
-  return { ...link, ...massProperties };
+export const syncLinkPhysicalProperties = (link: RobotLink, meshes: StepMeshData[]): RobotLink => {
+  const bodies = resolvePhysicalBodies(meshes, link.physicalBodies);
+  const summary = computeLinkPhysicalSummary(meshes, bodies);
+  return {
+    ...link,
+    physicalBodies: bodies,
+    volume: summary.totalVolume,
+    mass: summary.totalMass,
+    materialName: bodies.every((body) => body.materialName === bodies[0]?.materialName) ? bodies[0]?.materialName ?? "Composite" : "Composite",
+    density: summary.totalVolume > 0 ? summary.totalMass / summary.totalVolume : link.density,
+    centerOfMass: summary.centerOfMass,
+    inertia: summary.inertia,
+    meshes,
+  };
 };
 
 export const snapToFaceCenter = (dimensions: Vec3Tuple, faceNormal: Vec3Tuple): Vec3Tuple => {

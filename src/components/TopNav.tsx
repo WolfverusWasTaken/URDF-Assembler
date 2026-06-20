@@ -1,10 +1,11 @@
-import { Boxes, Download, MousePointer2, PackageCheck } from "lucide-react";
+import { Boxes, Download, GitBranch, MousePointer2, PackageCheck } from "lucide-react";
 import type { PageKey } from "../types";
 import { useAppStore } from "../store";
 
 const pages: Array<{ key: PageKey; label: string; icon: typeof Download }> = [
   { key: "upload", label: "STEP Intake", icon: Download },
   { key: "definition", label: "Link Definition", icon: MousePointer2 },
+  { key: "physical", label: "Physical Properties", icon: GitBranch },
   { key: "assembly", label: "Robot Assembly", icon: Boxes },
   { key: "export", label: "Export Package", icon: PackageCheck },
 ];

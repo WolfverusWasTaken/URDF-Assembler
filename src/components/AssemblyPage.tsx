@@ -25,7 +25,6 @@ export function AssemblyPage() {
   const setPage = useAppStore((state) => state.setPage);
   const updateJoint = useAppStore((state) => state.updateJoint);
   const toggleOption = useAppStore((state) => state.toggleOption);
-  const [inspector, setInspector] = useState<"link" | "joint">("link");
 
   const selectedJoint = useMemo(
     () => joints.find((joint) => joint.id === selectedJointId) ?? joints[0],
@@ -58,10 +57,9 @@ export function AssemblyPage() {
             <div key={link.id}>
               <button
                 type="button"
-                className={inspector === "link" && selectedLink?.id === link.id ? "tree-link selected" : "tree-link"}
+                className={selectedLink?.id === link.id ? "tree-link selected" : "tree-link"}
                 onClick={() => {
                   setSelectedLink(link.id);
-                  setInspector("link");
                 }}
               >
                 <Box size={15} />
@@ -70,10 +68,9 @@ export function AssemblyPage() {
               {childJoint && (
                 <button
                   type="button"
-                  className={inspector === "joint" && selectedJoint?.id === childJoint.id ? "tree-joint selected" : "tree-joint"}
+                  className={selectedJoint?.id === childJoint.id ? "tree-joint selected" : "tree-joint"}
                   onClick={() => {
                     setSelectedJoint(childJoint.id);
-                    setInspector("joint");
                   }}
                 >
                   <span className="joint-dot" />
@@ -169,10 +166,10 @@ export function AssemblyPage() {
 
       <aside className="property-panel assembly-props">
         <div className="panel-heading">
-          <span>{inspector === "joint" ? "Joint properties" : "Link orientation"}</span>
-          <strong>{inspector === "joint" ? selectedJoint?.name ?? "none" : selectedLink?.name ?? "none"}</strong>
+          <span>Link orientation</span>
+          <strong>{selectedLink?.name ?? "none"}</strong>
         </div>
-        {inspector === "link" && selectedLink ? (
+        {selectedLink ? (
           <div className="orientation-panel">
             <OrientationSlider
               label="Rotate left / right"
@@ -190,7 +187,15 @@ export function AssemblyPage() {
               onChange={(value) => setLinkOrientation(selectedLink.id, [selectedLink.orientation[0], selectedLink.orientation[1], value])}
             />
           </div>
-        ) : selectedJoint ? (
+        ) : (
+          <p className="muted">Select a link to edit its base orientation.</p>
+        )}
+
+        <div className="panel-heading joint-panel-heading">
+          <span>Active Joint</span>
+          <strong>{selectedJoint?.name ?? "none"}</strong>
+        </div>
+        {selectedJoint ? (
           <div className="joint-form">
             <label>
               Type
@@ -202,12 +207,12 @@ export function AssemblyPage() {
             <NumberField label="Lower limit" value={selectedJoint.limitLower} onChange={(value) => updateJoint(selectedJoint.id, { limitLower: value })} />
             <NumberField label="Upper limit" value={selectedJoint.limitUpper} onChange={(value) => updateJoint(selectedJoint.id, { limitUpper: value })} />
             <NumberField label="Velocity" value={selectedJoint.velocity} onChange={(value) => updateJoint(selectedJoint.id, { velocity: value })} />
-            <NumberField label="Effort" value={selectedJoint.effort} onChange={(value) => updateJoint(selectedJoint.id, { effort: value })} />
+            <EffortField key={selectedJoint.id} joint={selectedJoint} onChange={(value) => updateJoint(selectedJoint.id, { effort: value })} />
             <NumberField label="Damping" value={selectedJoint.damping} onChange={(value) => updateJoint(selectedJoint.id, { damping: value })} />
             <NumberField label="Friction" value={selectedJoint.friction} onChange={(value) => updateJoint(selectedJoint.id, { friction: value })} />
           </div>
         ) : (
-          <p className="muted">Add at least two links to create joints.</p>
+          <p className="muted">Select a joint to edit limits, axis, and motor behavior.</p>
         )}
         {options.collisions && collisions.length > 0 && (
           <div className="warning-box">
@@ -219,6 +224,40 @@ export function AssemblyPage() {
         </button>
       </aside>
     </main>
+  );
+}
+
+const effortUnits = [
+  { label: "Nm", multiplier: 1 },
+  { label: "Ncm", multiplier: 0.01 },
+  { label: "kgf-cm", multiplier: 0.0980665 },
+  { label: "oz-in", multiplier: 0.00706155 },
+] as const;
+
+function EffortField({ joint, onChange }: { joint: RobotJoint; onChange: (value: number) => void }) {
+  const [unit, setUnit] = useState<(typeof effortUnits)[number]["label"]>("Nm");
+  const activeUnit = effortUnits.find((entry) => entry.label === unit) ?? effortUnits[0];
+  const displayValue = joint.effort / activeUnit.multiplier;
+
+  return (
+    <label className="effort-field">
+      Effort limit
+      <div className="effort-row">
+        <input
+          type="number"
+          step="0.01"
+          value={Number(displayValue.toFixed(3))}
+          onChange={(event) => onChange(Number(event.target.value) * activeUnit.multiplier)}
+        />
+        <select value={unit} onChange={(event) => setUnit(event.target.value as (typeof effortUnits)[number]["label"])}>
+          {effortUnits.map((entry) => (
+            <option key={entry.label} value={entry.label}>
+              {entry.label}
+            </option>
+          ))}
+        </select>
+      </div>
+    </label>
   );
 }
 

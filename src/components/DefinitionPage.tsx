@@ -1,5 +1,5 @@
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, PerspectiveCamera, Environment, Grid } from "@react-three/drei";
+import { Environment, Grid, OrbitControls, PerspectiveCamera } from "@react-three/drei";
 import { ArrowRight, CircleDot, CornerDownRight, Crosshair, RotateCw } from "lucide-react";
 import { useMemo, useState } from "react";
 import { inferJointFromHit } from "../lib/geometry";
@@ -27,6 +27,7 @@ export function DefinitionPage() {
   );
 
   if (!selectedLink) return null;
+
   const indicatorScale = modelIndicatorScale(selectedLink.dimensions);
 
   const pickJoint = (point: Vec3Tuple, normal: Vec3Tuple) => {
@@ -82,6 +83,7 @@ export function DefinitionPage() {
             <group>
               <LinkMesh
                 link={selectedLink}
+                activeMeshId={selectedLink.meshes?.[0]?.id ?? null}
                 onPick={pickJoint}
                 onSnapHover={(center, normal) => setHoverSnap({ center, normal })}
                 onSnapOut={() => setHoverSnap(null)}
@@ -168,8 +170,9 @@ export function DefinitionPage() {
             )}
           </div>
         ))}
-        <button type="button" className="primary-button full" onClick={() => setPage("assembly")}>
-          Assemble robot <ArrowRight size={17} />
+
+        <button type="button" className="primary-button full" onClick={() => setPage("physical")}>
+          Physical properties <ArrowRight size={17} />
         </button>
       </aside>
     </main>

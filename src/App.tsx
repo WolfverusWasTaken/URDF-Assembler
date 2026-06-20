@@ -1,6 +1,7 @@
 import { AssemblyPage } from "./components/AssemblyPage";
 import { DefinitionPage } from "./components/DefinitionPage";
 import { ExportPage } from "./components/ExportPage";
+import { PhysicalPropertiesPage } from "./components/PhysicalPropertiesPage";
 import { TopNav } from "./components/TopNav";
 import { UploadPage } from "./components/UploadPage";
 import { useAppStore } from "./store";
@@ -13,6 +14,7 @@ export default function App() {
       <TopNav />
       {page === "upload" && <UploadPage />}
       {page === "definition" && <DefinitionPage />}
+      {page === "physical" && <PhysicalPropertiesPage />}
       {page === "assembly" && <AssemblyPage />}
       {page === "export" && <ExportPage />}
     </div>

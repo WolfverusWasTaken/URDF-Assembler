@@ -1,7 +1,8 @@
 import JSZip from "jszip";
 import { Euler, Quaternion, Vector3 } from "three";
 import type { RobotJoint, RobotLink, StepMeshData, Vec3Tuple } from "../types";
-import { estimateMassProperties, formatNumber, tupleToString } from "./math";
+import { computeLinkPhysicalSummary, resolvePhysicalBodies, validatePhysicalSummary } from "./physics";
+import { formatNumber, tupleToString } from "./math";
 
 const robotName = "urdf_assembler_robot";
 
@@ -61,9 +62,9 @@ export const createBakedAsciiStl = (link: RobotLink) => {
 
   for (const mesh of meshes) {
     for (let index = 0; index < mesh.indices.length; index += 3) {
-      const a = vertexAt(mesh, mesh.indices[index], link);
-      const b = vertexAt(mesh, mesh.indices[index + 1], link);
-      const c = vertexAt(mesh, mesh.indices[index + 2], link);
+      const a = vertexAt(mesh, mesh.indices[index]);
+      const b = vertexAt(mesh, mesh.indices[index + 1]);
+      const c = vertexAt(mesh, mesh.indices[index + 2]);
       const normal = new Vector3().subVectors(b, a).cross(new Vector3().subVectors(c, a)).normalize();
 
       lines.push(`  facet normal ${formatVector(normal)}`);
@@ -80,7 +81,7 @@ export const createBakedAsciiStl = (link: RobotLink) => {
   return lines.join("\n");
 };
 
-const vertexAt = (mesh: StepMeshData, vertexIndex: number, link: RobotLink) => {
+const vertexAt = (mesh: StepMeshData, vertexIndex: number) => {
   const offset = vertexIndex * 3;
   return new Vector3(mesh.positions[offset], mesh.positions[offset + 1], mesh.positions[offset + 2]);
 };
@@ -100,18 +101,16 @@ export const createCleanUrdf = (links: RobotLink[], joints: RobotJoint[]) => {
   const linkXml = links
     .map((link) => {
       const name = linkExportName(link);
-      const inertial = estimateMassProperties({
-        meshes: bakedMeshes(link),
-        dimensions: link.dimensions,
-        density: link.density,
-      });
+      const meshes = bakedMeshes(link);
+      const bodies = resolvePhysicalBodies(meshes, link.physicalBodies);
+      const inertial = computeLinkPhysicalSummary(meshes, bodies);
       const inertia = inertial.inertia;
       const meshPath = `package://${robotName}/meshes/${name}.stl`;
 
       return `  <link name="${xmlEscape(name)}">
     <inertial>
       <origin xyz="${tupleToString(inertial.centerOfMass, 8)}" rpy="0 0 0"/>
-      <mass value="${formatNumber(inertial.mass, 8)}"/>
+      <mass value="${formatNumber(inertial.totalMass, 8)}"/>
       <inertia ixx="${formatNumber(inertia.ixx, 10)}" ixy="${formatNumber(inertia.ixy, 10)}" ixz="${formatNumber(inertia.ixz, 10)}" iyy="${formatNumber(inertia.iyy, 10)}" iyz="${formatNumber(inertia.iyz, 10)}" izz="${formatNumber(inertia.izz, 10)}"/>
     </inertial>
     <visual>
@@ -219,4 +218,12 @@ ament_package()
   }
 
   return zip.generateAsync({ type: "blob" });
+};
+
+export const validateRobotLink = (link: RobotLink) => {
+  const meshes = bakedMeshes(link);
+  const bodies = resolvePhysicalBodies(meshes, link.physicalBodies);
+  const summary = computeLinkPhysicalSummary(meshes, bodies);
+  const validation = validatePhysicalSummary(summary);
+  return { summary, validation };
 };
