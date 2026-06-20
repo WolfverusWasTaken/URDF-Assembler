@@ -34,13 +34,13 @@ This project is useful when you need to:
 
 ## Demo
 
-The repository includes a short demo recording at [`src/assets/assembler_demo.mp4`](src/assets/assembler_demo.mp4).
+The repository includes a short demo animation at [`src/assets/demo.gif`](src/assets/demo.gif).
 
 <p align="center">
-  <video controls width="100%" src="src/assets/assembler_demo.mp4"></video>
+  <img src="src/assets/demo.gif" alt="URDF Assembler demo" />
 </p>
 
-If your GitHub viewer does not render the inline player, open the file directly from the repository path above.
+If your GitHub viewer does not render the image, open the file directly from the repository path above.
 
 ## Export Preview
 
