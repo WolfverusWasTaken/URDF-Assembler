@@ -20,6 +20,13 @@ const qFromOrientation = (orientation: Vec3Tuple) =>
 
 const vector = (value: Vec3Tuple) => new Vector3(value[0], value[1], value[2]);
 
+const inferExportScale = (link: RobotLink) => {
+  const maxDimension = Math.max(...link.dimensions);
+  if (maxDimension <= 0.05) return 1000;
+  if (maxDimension >= 50) return 0.001;
+  return 1;
+};
+
 const bakedPoint = (point: Vec3Tuple, link: RobotLink) => {
   const origin = link.originPoint?.center ?? [0, 0, 0];
   return vector(point).sub(vector(origin)).applyQuaternion(qFromOrientation(link.orientation));
@@ -46,11 +53,12 @@ export const linkExportName = (link: RobotLink) => cleanName(link.name);
 
 const bakedMeshes = (link: RobotLink): StepMeshData[] => {
   const meshes = link.meshes && link.meshes.length > 0 ? link.meshes : makeFallbackMesh(link);
+  const exportScale = inferExportScale(link);
   return meshes.map((mesh) => {
     const positions: number[] = [];
     for (let index = 0; index < mesh.positions.length; index += 3) {
       const point = bakedPoint([mesh.positions[index], mesh.positions[index + 1], mesh.positions[index + 2]], link);
-      positions.push(point.x, point.y, point.z);
+      positions.push(point.x * exportScale, point.y * exportScale, point.z * exportScale);
     }
     return { ...mesh, positions };
   });

@@ -7,8 +7,14 @@ import { snapToFaceCenter } from "../lib/geometry";
 
 export const modelIndicatorScale = (dimensions: Vec3Tuple) => {
   const largest = Math.max(...dimensions);
-  if (!Number.isFinite(largest) || largest <= 0) return 0.1;
-  return Math.max(0.002, Math.min(0.12, largest * 0.08));
+  const smallest = Math.min(...dimensions.filter((value) => Number.isFinite(value) && value > 0));
+  if (!Number.isFinite(largest) || largest <= 0) return 0.04;
+  const base = largest * 0.035;
+  const constrained = Math.max(0.0015, Math.min(0.045, base));
+  if (Number.isFinite(smallest) && smallest > 0) {
+    return Math.min(constrained, Math.max(0.0012, smallest * 0.18));
+  }
+  return constrained;
 };
 
 export function AxisIndicator() {
@@ -36,12 +42,12 @@ export function CoordinateFrame({ scale = 0.38 }: { scale?: number }) {
 
 export function AxisArrow({ point, color = "#111827", scale = 0.08 }: { point: JointPoint; color?: string; scale?: number }) {
   const start = toVector(point.center);
-  const end = start.clone().add(toVector(point.axis).multiplyScalar(scale * 4.8));
+  const end = start.clone().add(toVector(point.axis).multiplyScalar(scale * 3.2));
   return (
     <group>
       <Line points={[start, end]} color={color} lineWidth={3} />
       <mesh position={end}>
-        <sphereGeometry args={[scale * 0.35, 16, 16]} />
+        <sphereGeometry args={[scale * 0.22, 16, 16]} />
         <meshStandardMaterial color={color} />
       </mesh>
     </group>
@@ -63,20 +69,20 @@ export function JointAxisIndicator({
   if (vector.lengthSq() < 0.000001) vector.set(1, 0, 0);
   vector.normalize();
   const start = vector.clone().multiplyScalar(-scale * 3.5);
-  const end = vector.clone().multiplyScalar(scale * 5.5);
+  const end = vector.clone().multiplyScalar(scale * 3.8);
 
   return (
     <group>
       <Line points={[start, end]} color={color} lineWidth={4} />
       <mesh position={end}>
-        <sphereGeometry args={[scale * 0.45, 18, 18]} />
+        <sphereGeometry args={[scale * 0.26, 18, 18]} />
         <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.35} />
       </mesh>
       <mesh>
-        <torusGeometry args={[scale * 1.4, scale * 0.09, 12, 44]} />
+        <torusGeometry args={[scale * 0.82, scale * 0.045, 12, 44]} />
         <meshStandardMaterial color={color} transparent opacity={0.82} />
       </mesh>
-      <Html position={[0, scale * 2, 0]} center className="joint-axis-label">
+      <Html position={[0, scale * 1.15, 0]} center className="joint-axis-label">
         {label}
       </Html>
     </group>
@@ -88,22 +94,22 @@ export function JointMarker({ point, scale = 0.08 }: { point: JointPoint; scale?
   return (
     <group position={point.center}>
       <mesh>
-        <sphereGeometry args={[Math.max(scale * 0.45, Math.min(scale * 0.9, point.radius * 0.25)), 24, 24]} />
+        <sphereGeometry args={[Math.max(scale * 0.22, Math.min(scale * 0.5, point.radius * 0.18)), 24, 24]} />
         <meshStandardMaterial color={color} roughness={0.55} metalness={0.1} />
       </mesh>
-      <CoordinateFrame scale={scale * 2.2} />
+      <CoordinateFrame scale={scale * 1.3} />
       <AxisArrow point={point} color={color} scale={scale} />
     </group>
   );
 }
 
 export function SnapPreview({ center, normal, scale = 0.08 }: { center: Vec3Tuple; normal: Vec3Tuple; scale?: number }) {
-  const end = toVector(center).add(toVector(normal).multiplyScalar(scale * 3.2));
+  const end = toVector(center).add(toVector(normal).multiplyScalar(scale * 2.2));
 
   return (
     <group position={center}>
       <mesh>
-        <sphereGeometry args={[scale * 0.58, 24, 24]} />
+        <sphereGeometry args={[scale * 0.34, 24, 24]} />
         <meshStandardMaterial color="#F7F2EB" emissive="#00C2CB" emissiveIntensity={0.7} transparent opacity={0.78} />
       </mesh>
       <Line points={[[0, 0, 0], end.sub(toVector(center))]} color="#ffffff" lineWidth={3} />

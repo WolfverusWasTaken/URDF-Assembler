@@ -5,6 +5,17 @@ node_modules/
 dist/
 coverage/
 
+# Local verification workspace
+verifier/*
+!verifier/.gitignore
+!verifier/load_urdf_pybullet.py
+!verifier/urdf_input/
+verifier/urdf_input/*
+!verifier/urdf_input/.gitkeep
+!verifier/results/
+verifier/results/*
+!verifier/results/.gitkeep
+
 # Vite cache
 .vite/
 
